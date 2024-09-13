@@ -1,0 +1,85 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// schema.prisma  
+
+// Enum for user roles  
+enum Role {
+  INDIVIDUAL
+  HEAD_OF_DEPARTMENT
+  COMMISSIONER
+  UNDERSECRETARY
+  ACCOUNTS
+  AUDIT
+}
+
+// Enum for document status  
+enum DocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// User model representing individuals in the system  
+model User {
+  id            String          @id @default(auto()) @map("_id") @db.ObjectId
+  email         String          @unique
+  username      String          @unique
+  password      String
+  firstName     String
+  lastName      String
+  phone         String          @unique
+  role          Role            @default(INDIVIDUAL)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime?       @updatedAt
+  documents     Document[]      @relation("DocumentOwner")
+  WorkflowStage WorkflowStage[]
+}
+
+// Document model representing requisition documents  
+model Document {
+  id             String          @id @default(auto()) @map("_id") @db.ObjectId
+  title          String
+  description    String
+  status         DocumentStatus
+  qrCode         String          @unique
+  ownerId        String          @db.ObjectId
+  owner          User            @relation("DocumentOwner", fields: [ownerId], references: [id])
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  workflowStages WorkflowStage[]
+}
+
+// WorkflowStage model to track the progress of documents through various stages  
+model WorkflowStage {
+  id         String         @id @default(auto()) @map("_id") @db.ObjectId
+  documentId String         @db.ObjectId
+  document   Document       @relation(fields: [documentId], references: [id])
+  userId     String         @db.ObjectId
+  user       User           @relation(fields: [userId], references: [id])
+  status     DocumentStatus
+  comment    String?
+  createdAt  DateTime       @default(now())
+}
+
+// Optional: If you want to track additional information about the document flow  
+model DocumentFlow {
+  id         String         @id @default(auto()) @map("_id") @db.ObjectId
+  documentId String
+  stage      String // Stage name (e.g., "Head of Department", "Accounts", etc.)  
+  status     DocumentStatus
+  timestamp  DateTime       @default(now())
+  comment    String?
+}
